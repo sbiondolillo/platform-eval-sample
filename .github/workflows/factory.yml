@@ -1,0 +1,39 @@
+# Starts a factory run when the repo's owner labels an issue `factory`, or by hand at a chosen ref.
+name: factory
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: The number of the issue to run
+        required: true
+        type: number
+      ref:
+        description: The branch, tag or commit of the factory
+        default: v1
+
+# The job's own token reads the check runs of the pull request. A fine-grained token has no Checks permission on a private repo.
+permissions:
+  checks: read
+
+jobs:
+  factory:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event.label.name == 'factory' && github.event.sender.login == github.repository_owner)
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: sbiondolillo/dotnet-software-factory
+          ref: ${{ inputs.ref || 'v1' }}
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Run the factory
+        env:
+          FACTORY_GITHUB_TOKEN: ${{ secrets.FACTORY_GITHUB_TOKEN }}
+          FACTORY_CHECKS_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EXAMPLE_API_KEY: ${{ secrets.EXAMPLE_API_KEY }}
+        run: dotnet run --project src/App -c Release -- run --repo ${{ github.repository }} --issue ${{ inputs.issue || github.event.issue.number }} --pass-env EXAMPLE_API_KEY
