@@ -1,0 +1,19 @@
+# A three-step job with no factory in it, for the agent-platform-eval live-steps
+# probe. It separates the runner from the factory: if GitHub shows these steps
+# live while the job runs on sandbox-01, the runner's reporting path works and
+# the factory job's blank view is the factory's. Started by hand only.
+name: runner-smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, dsf]
+    steps:
+      - name: Say hello
+        run: echo "hello from $(hostname) at $(date -u +%FT%TZ)"
+      - name: Count to twelve, one line per 5 seconds
+        run: for i in $(seq 1 12); do echo "tick $i"; sleep 5; done
+      - name: Say goodbye
+        run: echo "goodbye at $(date -u +%FT%TZ)"
