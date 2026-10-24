@@ -1,4 +1,7 @@
 # Starts a factory run when the repo's owner labels an issue `factory`, or by hand at a chosen ref.
+# The job runs on the lab's `sandbox-01` runner, label `dsf`. The two secrets come from the `dsf` Infisical project through the host's machine identity.
+# The model is reached through the lab gateway at `ANTHROPIC_BASE_URL`.
+# This is the platform arm of `agent-platform-eval`. The diff against the starter's own `factory.yml` is the whole delta.
 name: factory
 
 on:
@@ -20,7 +23,7 @@ permissions:
 
 jobs:
   factory:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, dsf]
     if: github.event_name == 'workflow_dispatch' || (github.event.label.name == 'factory' && github.event.sender.login == github.repository_owner)
     steps:
       - uses: actions/checkout@v7
@@ -32,8 +35,12 @@ jobs:
           global-json-file: global.json
       - name: Run the factory
         env:
-          FACTORY_GITHUB_TOKEN: ${{ secrets.FACTORY_GITHUB_TOKEN }}
           FACTORY_CHECKS_TOKEN: ${{ github.token }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          EXAMPLE_API_KEY: ${{ secrets.EXAMPLE_API_KEY }}
-        run: dotnet run --project src/App -c Release -- run --repo ${{ github.repository }} --issue ${{ inputs.issue || github.event.issue.number }} --pass-env EXAMPLE_API_KEY
+          ANTHROPIC_BASE_URL: http://10.99.0.186:8200
+        run: |
+          set -euo pipefail
+          set -a; . /etc/homelab/dsf/.infisical-auth.env; set +a
+          DOMAIN="https://infisical-api.sambiondolillo.com/api"
+          TOKEN=$(infisical login --method=universal-auth --client-id="$INFISICAL_CLIENT_ID" --client-secret="$INFISICAL_CLIENT_SECRET" --domain="$DOMAIN" --silent --plain)
+          exec infisical run --token="$TOKEN" --projectId="${{ vars.INFISICAL_PROJECT_ID }}" --domain="$DOMAIN" --env=prod -- \
+            dotnet run --project src/App -c Release -- run --repo ${{ github.repository }} --issue ${{ inputs.issue || github.event.issue.number }} --pass-env ANTHROPIC_BASE_URL
