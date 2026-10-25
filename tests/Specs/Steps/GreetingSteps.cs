@@ -11,6 +11,7 @@ public sealed class GreetingSteps
     private string _name = "";
     private string _greeting = "";
     private string _output = "";
+    private int _exitCode;
 
     [Given("the name {string}")]
     public void GivenTheName(string name) => _name = name;
@@ -26,14 +27,21 @@ public sealed class GreetingSteps
     {
         string[] args = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         using var output = new StringWriter();
-        GreetCommand.Create().Parse(args).Invoke(new InvocationConfiguration { Output = output });
+        _exitCode = GreetCommand.Create().Parse(args).Invoke(new InvocationConfiguration { Output = output });
         _output = output.ToString();
     }
 
     [Then("the console program prints {string}")]
-    public void ThenTheConsoleProgramPrints(string expected) => Assert.Equal(expected, _output.TrimEnd('\r', '\n'));
+    public void ThenTheConsoleProgramPrints(string expected)
+    {
+        Assert.Equal(0, _exitCode);
+        Assert.Equal(expected, _output.TrimEnd('\r', '\n'));
+    }
 
     [Then("the console program prints a line that contains {string}")]
-    public void ThenTheConsoleProgramPrintsALineThatContains(string expected) =>
+    public void ThenTheConsoleProgramPrintsALineThatContains(string expected)
+    {
+        Assert.Equal(0, _exitCode);
         Assert.Contains(_output.Split('\n'), line => line.Contains(expected, StringComparison.Ordinal));
+    }
 }
